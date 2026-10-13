@@ -30,6 +30,7 @@ const MODEL = config.model ?? 'small';
 const TOOLS = config.allowedTools ?? 'Read,Write,Edit,Glob,Grep,WebSearch,WebFetch';
 
 let busy = false;
+const seen = new Set();   // addresses that already passed /health (logged once)
 
 const loadState = () => (existsSync(STATE) ? JSON.parse(readFileSync(STATE, 'utf8')) : {});
 const saveState = s => writeFileSync(STATE, JSON.stringify(s, null, 2), { mode: 0o600 });
@@ -102,6 +103,8 @@ const server = createServer(async (req, res) => {
   if (!authorized(req)) { res.writeHead(401).end(); log(req.method, req.url, '401'); return; }
 
   if (req.method === 'GET' && req.url === '/health') {
+    const who = req.socket.remoteAddress;
+    if (!seen.has(who)) { seen.add(who); log('watch connected from', who); }
     res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ ok: true, busy }));
     return;
   }
