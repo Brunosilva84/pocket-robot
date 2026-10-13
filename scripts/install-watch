@@ -1,0 +1,16 @@
+#!/bin/zsh
+# Builds the watch app for a real Apple Watch and installs it.
+# Usage: POCKET_ROBOT_TEAM=<your team id> scripts/install-watch
+# Keep the watch unlocked, on its charger or wrist, and on the same Wi-Fi as this Mac.
+set -e
+ROOT=${0:A:h:h}
+: ${POCKET_ROBOT_TEAM:?Set POCKET_ROBOT_TEAM to your Apple Developer team id}
+cd $ROOT/watch
+xcodegen generate -q
+xcodebuild -project PocketRobot.xcodeproj -scheme PocketRobot -configuration Debug \
+  -destination 'generic/platform=watchOS' -derivedDataPath build -allowProvisioningUpdates \
+  DEVELOPMENT_TEAM=$POCKET_ROBOT_TEAM build | grep -E "error:|BUILD (SUCCEEDED|FAILED)"
+WATCH=$(xcrun devicectl list devices 2>/dev/null | awk '/Apple Watch/ && /available/ {for (i=1;i<=NF;i++) if ($i ~ /^[0-9A-F-]{36}$/) {print $i; exit}}')
+if [[ -z $WATCH ]]; then echo "No Apple Watch available. Unlock it and keep it on the same Wi-Fi."; exit 1; fi
+xcrun devicectl device install app --device $WATCH "build/Build/Products/Debug-watchos/Pocket Robot.app"
+echo "Installed. Open Pocket Robot on the watch."
