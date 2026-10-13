@@ -34,6 +34,7 @@ targets:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationPortraitUpsideDown
         NSMicrophoneUsageDescription: Pocket Robot listens while you hold the screen, then sends what you said to your Mac.
+        NSLocalNetworkUsageDescription: Pocket Robot talks to the hub running on your Mac.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
     settings:
@@ -47,3 +48,13 @@ targets:
         TARGETED_DEVICE_FAMILY: "4"
         SKIP_INSTALL: NO
         ENABLE_PREVIEWS: YES
+
+schemes:
+  PocketRobot:
+    build:
+      targets:
+        PocketRobot: all
+    run:
+      config: Debug
+      # Attaching the debugger over Wi-Fi is slow enough that watchOS kills the app at launch.
+      debugEnabled: false
