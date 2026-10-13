@@ -35,6 +35,9 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
         NSMicrophoneUsageDescription: Pocket Robot listens while you hold the screen, then sends what you said to your Mac.
         NSLocalNetworkUsageDescription: Pocket Robot talks to the hub running on your Mac.
+        # self-care extended runtime session keeps the app alive while a turn is in flight
+        WKBackgroundModes:
+          - self-care
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
     settings:

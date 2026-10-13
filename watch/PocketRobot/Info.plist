@@ -25,6 +25,8 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Pocket Robot talks to the hub running on your Mac.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Pocket Robot listens while you hold the screen, then sends what you said to your Mac.</string>
 	<key>UISupportedInterfaceOrientations</key>
@@ -34,6 +36,10 @@
 	</array>
 	<key>WKApplication</key>
 	<true/>
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>self-care</string>
+	</array>
 	<key>WKWatchOnly</key>
 	<true/>
 </dict>

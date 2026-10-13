@@ -31,7 +31,10 @@ final class AppModel {
     }
 
     private(set) var state: AgentState = .idle {
-        didSet { if state != oldValue { visor.set(state.expression) } }
+        didSet {
+            if state != oldValue { visor.set(state.expression) }
+            if !isBusy { keepAlive.end() } // turn over (done, error, offline, cancelled)
+        }
     }
     private(set) var heard = ""
     private(set) var reply = ""
@@ -42,6 +45,7 @@ final class AppModel {
     @ObservationIgnored private let recorder = Recorder()
     @ObservationIgnored private let speaker = Speaker()
     @ObservationIgnored private let hub = HubClient()
+    @ObservationIgnored private let keepAlive = KeepAlive()
     @ObservationIgnored private var healthTask: Task<Void, Never>?
     @ObservationIgnored private var turnTask: Task<Void, Never>?
     @ObservationIgnored private var resetTask: Task<Void, Never>?
@@ -141,6 +145,7 @@ final class AppModel {
     private func send(_ file: URL) {
         state = .thinking
         pendingDone = false
+        keepAlive.begin()
         turnTask = Task { [weak self] in
             guard let self else { return }
             do {

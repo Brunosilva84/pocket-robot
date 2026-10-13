@@ -49,6 +49,10 @@ final class VisorModel {
     var clock: () -> Double = { Date().timeIntervalSinceReferenceDate }
     var sleepAfter: Double = 14
     var blinking = true
+    /// Always On (reduced luminance): ~1 Hz updates, dim look, no particles, no motion.
+    var lowPower = false {
+        didSet { if !lowPower { self[.open] = 1 } } // drop a half-closed AOD blink frame
+    }
 
     private(set) var expression: VisorExpression = .neutral
 
@@ -285,7 +289,11 @@ final class VisorModel {
     // MARK: - per-frame update
 
     func step(now: Double) {
-        let dt = max(0, min(0.04, now - last))
+        // Frames can be ~1 s apart in Always On (and longer when it resumes): integrate the springs in
+        // small sub-steps over at most one second so they neither explode nor crawl.
+        let span = max(0, min(1, now - last))
+        let substeps = max(1, Int((span / 0.034).rounded(.up)))
+        let dt = span / Double(substeps)
         last = now
         let ms = now * 1000
 
@@ -330,7 +338,7 @@ final class VisorModel {
         tgt[EyeParam.w.rawValue] = e.w
         tgt[EyeParam.hL.rawValue] = e.hL
         tgt[EyeParam.hR.rawValue] = e.hR
-        if e.talk {
+        if e.talk && !lowPower {
             // syllable-ish rhythm: two incommensurate beats, eyes open and close like a mouth
             let t = now - t0
             let syl = abs(sin(t * 9.0)) * (0.6 + 0.4 * abs(sin(t * 2.3)))
@@ -349,12 +357,14 @@ final class VisorModel {
         tgt[EyeParam.round.rawValue] = e.round
         tgt[EyeParam.dim.rawValue] = e.dim
         let w = 2 * Double.pi / 0.5, z = 0.62
-        for i in 0..<tgt.count {
-            let acc = w * w * (tgt[i] - cur[i]) - 2 * z * w * vel[i]
-            vel[i] += acc * dt
-            cur[i] += vel[i] * dt
+        for _ in 0..<substeps {
+            for i in 0..<tgt.count {
+                let acc = w * w * (tgt[i] - cur[i]) - 2 * z * w * vel[i]
+                vel[i] += acc * dt
+                cur[i] += vel[i] * dt
+            }
         }
-        let tc = VisorModel.rgb(e.color), kc = 1 - pow(0.004, dt)
+        let tc = VisorModel.rgb(e.color), kc = 1 - pow(0.004, span)
         for i in 0..<3 { col[i] += (tc[i] - col[i]) * kc }
 
         // gaze: wander (thinking), scan (searching), circles (dizzy), fixed look, or the finger
@@ -369,10 +379,20 @@ final class VisorModel {
         else if name == .dizzy { lx = cos(t * 5) * 0.5; ly = sin(t * 5) * 0.35 }
         else if let look = e.look { lx = look.0; ly = look.1 }
         else if name == .sleepy { lx = 0; ly = -0.3 }
-        let kl = 1 - pow(0.003, dt)
+        let kl = 1 - pow(0.003, span)
         ex += (lx - ex) * kl
         ey += (ly - ey) * kl
-        tilt += (e.tilt - tilt) * (1 - pow(0.01, dt))
+        tilt += (e.tilt - tilt) * (1 - pow(0.01, span))
+
+        if lowPower {
+            // one half-shut frame every ~9 s reads as a slow blink at 1 Hz; no particles or tears
+            tweens[.open] = nil
+            self[.open] = blinking && name != .sleepy && Int(now) % 9 == 0 ? 0.3 : 1
+            parts.removeAll(); tears.removeAll()
+            nextBlink = now + 1 + rnd() * 2
+            shownName = name
+            return
+        }
 
         if blinking && now > nextBlink && name != .sleepy {
             blink()

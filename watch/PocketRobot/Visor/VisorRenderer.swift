@@ -78,14 +78,15 @@ extension VisorModel {
         let name = shownName, e = name.spec
         let R = layout.R, t = now - t0
         let rgb = col
-        let breathe = e.breathe ? sin(t * 1.8) : 0
-        let float = sin(t * (e.breathe ? 0.9 : 1.6)) * 0.06 * R
-        let bounce = e.bounce ? -abs(sin(t * 5.2)) * 0.07 * R : 0
+        let lp = lowPower // Always On: still, dim, no glow
+        let breathe = e.breathe && !lp ? sin(t * 1.8) : 0
+        let float = lp ? 0 : sin(t * (e.breathe ? 0.9 : 1.6)) * 0.06 * R
+        let bounce = e.bounce && !lp ? -abs(sin(t * 5.2)) * 0.07 * R : 0
         let cx = layout.center.x, cy = layout.center.y + float
         let ox = self[.ox], oy = self[.oy], roll = self[.roll]
 
         // floor glow + shadow (it hovers; shrinks when it rises)
-        if let floorY = layout.floorY {
+        if let floorY = layout.floorY, !lp {
             let lift = (float + bounce + oy * R) / R
             let sh = 1 + lift * 0.8
             g.fill(ellipse(cx, floorY, R * 1.0 * sh, R * 0.12 * sh), with: .color(rgba(rgb, 0.10)))
@@ -94,10 +95,10 @@ extension VisorModel {
 
         var hg = g
         let yaw = ex * 0.5, pitch = ey * 0.45, syaw = sin(yaw), spitch = sin(pitch)
-        let angry = name == .angry
+        let angry = name == .angry && !lp
         let trX = angry ? (sin(t * 53) + 0.6 * sin(t * 31)) * 0.008 * R : 0
-        let trY = angry ? sin(t * 41) * 0.004 * R : (name == .sad ? sin(t * 26) * 0.0035 * R : 0)
-        let wobble = name == .dizzy ? sin(t * 7) * 0.12 : 0
+        let trY = angry ? sin(t * 41) * 0.004 * R : (name == .sad && !lp ? sin(t * 26) * 0.0035 * R : 0)
+        let wobble = name == .dizzy && !lp ? sin(t * 7) * 0.12 : 0
         hg.translateBy(x: cx + syaw * 0.04 * R + ox * R + trX, y: cy + oy * R + trY + bounce)
         hg.rotate(by: .radians(ex * 0.03 + tilt + wobble))
         let pop = self[.pop]
@@ -112,26 +113,33 @@ extension VisorModel {
             if i == 0 { head.move(to: CGPoint(x: x, y: y)) } else { head.addLine(to: CGPoint(x: x, y: y)) }
         }
         head.closeSubpath()
-        hg.fill(head, with: .linearGradient(Gradient(colors: [.white, hex(0xBCC6D1)]),
-                                            startPoint: CGPoint(x: -rx * 0.6, y: -ry), endPoint: CGPoint(x: rx * 0.7, y: ry)))
-        hg.fill(head, with: .radialGradient(Gradient(colors: [.clear, Color(.sRGB, red: 20 / 255, green: 30 / 255, blue: 45 / 255, opacity: 0.28)]),
-                                            center: .zero, startRadius: R * 0.5, endRadius: R * 1.25))
-        hg.fill(head, with: .linearGradient(Gradient(colors: [rgba(rgb, 0.22), rgba(rgb, 0)]),
-                                            startPoint: CGPoint(x: 0, y: ry), endPoint: .zero))
-        let hx = -0.45 * R - syaw * 0.28 * R, hy = -0.62 * R + spitch * 0.15 * R
-        hg.fill(head, with: .radialGradient(Gradient(colors: [.white.opacity(0.95), .white.opacity(0)]),
-                                            center: CGPoint(x: hx, y: hy), startRadius: 0, endRadius: 0.55 * R))
+        if lp {
+            hg.fill(head, with: .linearGradient(Gradient(colors: [hex(0x3A414C), hex(0x1A1E25)]),
+                                                startPoint: CGPoint(x: -rx * 0.6, y: -ry), endPoint: CGPoint(x: rx * 0.7, y: ry)))
+        } else {
+            hg.fill(head, with: .linearGradient(Gradient(colors: [.white, hex(0xBCC6D1)]),
+                                                startPoint: CGPoint(x: -rx * 0.6, y: -ry), endPoint: CGPoint(x: rx * 0.7, y: ry)))
+            hg.fill(head, with: .radialGradient(Gradient(colors: [.clear, Color(.sRGB, red: 20 / 255, green: 30 / 255, blue: 45 / 255, opacity: 0.28)]),
+                                                center: .zero, startRadius: R * 0.5, endRadius: R * 1.25))
+            hg.fill(head, with: .linearGradient(Gradient(colors: [rgba(rgb, 0.22), rgba(rgb, 0)]),
+                                                startPoint: CGPoint(x: 0, y: ry), endPoint: .zero))
+            let hx = -0.45 * R - syaw * 0.28 * R, hy = -0.62 * R + spitch * 0.15 * R
+            hg.fill(head, with: .radialGradient(Gradient(colors: [.white.opacity(0.95), .white.opacity(0)]),
+                                                center: CGPoint(x: hx, y: hy), startRadius: 0, endRadius: 0.55 * R))
 
-        // top shine: a soft bright band hugging the top edge + a small sharp glint
+            // top shine: a soft bright band hugging the top edge + a small sharp glint
+            var shine = hg
+            shine.clip(to: head)
+            shine.fill(ellipse(-0.1 * R - syaw * 0.22 * R, -0.62 * R + spitch * 0.1 * R, 0.78 * R, 0.26 * R, rotation: -0.08),
+                       with: .linearGradient(Gradient(stops: [.init(color: .white.opacity(0), location: 0),
+                                                              .init(color: .white.opacity(0.85), location: 0.35),
+                                                              .init(color: .white.opacity(0), location: 1)]),
+                                             startPoint: CGPoint(x: 0, y: -ry), endPoint: CGPoint(x: 0, y: -ry * 0.55)))
+            shine.fill(ellipse(-0.62 * R - syaw * 0.25 * R, -0.58 * R + spitch * 0.1 * R, 0.1 * R, 0.05 * R, rotation: -0.6),
+                       with: .color(.white.opacity(0.95)))
+        }
         var cg = hg
         cg.clip(to: head)
-        cg.fill(ellipse(-0.1 * R - syaw * 0.22 * R, -0.62 * R + spitch * 0.1 * R, 0.78 * R, 0.26 * R, rotation: -0.08),
-                with: .linearGradient(Gradient(stops: [.init(color: .white.opacity(0), location: 0),
-                                                       .init(color: .white.opacity(0.85), location: 0.35),
-                                                       .init(color: .white.opacity(0), location: 1)]),
-                                      startPoint: CGPoint(x: 0, y: -ry), endPoint: CGPoint(x: 0, y: -ry * 0.55)))
-        cg.fill(ellipse(-0.62 * R - syaw * 0.25 * R, -0.58 * R + spitch * 0.1 * R, 0.1 * R, 0.05 * R, rotation: -0.6),
-                with: .color(.white.opacity(0.95)))
 
         // visor = a band on a sphere spanning longitudes [-VA, +VA]; the roll carries it over the top
         let VA = 0.88, Rv = 1.05 * R, cr = cos(roll)
@@ -149,9 +157,9 @@ extension VisorModel {
             var vg = cg
             vg.clip(to: visor)
             let vx = (xl + xr) / 2
-            vg.fill(Path(CGRect(x: -2 * R, y: -2 * R, width: 4 * R, height: 4 * R)),
+            if !lp { vg.fill(Path(CGRect(x: -2 * R, y: -2 * R, width: 4 * R, height: 4 * R)),
                     with: .radialGradient(Gradient(colors: [rgba(rgb, 0.16 * self[.dim]), rgba(rgb, 0)]),
-                                          center: CGPoint(x: vx, y: vy), startRadius: 0, endRadius: vw * 0.6))
+                                          center: CGPoint(x: vx, y: vy), startRadius: 0, endRadius: vw * 0.6)) }
             // eyes live on the same sphere: longitude +/-0.4 (+ a small glance inside the visor)
             let glance = ex * 0.12
             var eyeX: [Double: CGFloat] = [:]
@@ -165,6 +173,7 @@ extension VisorModel {
                         lidTop: down * 0.45, hScale: (1 + up * 0.14) * cr, now: now)
             }
             // tears roll down from under an eye and fade at the bottom of the visor
+            if lp { return }
             for tr in tears {
                 let a = now - tr.t0, kk = a / 1.4
                 let tx = eyeX[tr.side]! + tr.side * 0.04 * R, ty = vy + 0.1 * R + a * a * 0.35 * R
@@ -188,7 +197,7 @@ extension VisorModel {
                 endPoint: CGPoint(x: xr - syaw * 0.2 * R, y: vy + vh / 2)))
         }
 
-        drawParticles(&hg, R: R, now: now)
+        if !lp { drawParticles(&hg, R: R, now: now) }
     }
 
     private func drawParticles(_ g: inout GraphicsContext, R: CGFloat, now: Double) {
@@ -316,8 +325,18 @@ extension VisorModel {
             }
         }
 
-        // soft bloom behind, then the eye with glow, then a faint hot core
         let a = self[.dim]
+        if lowPower {
+            // Always On: flat, low-brightness eyes (no bloom, glow or hot core)
+            var eg = g
+            eg.opacity = 0.5 * a
+            eg.drawLayer { l in
+                l.translateBy(x: x, y: y); l.scaleBy(x: fx, y: 1)
+                shape(&l)
+            }
+            return
+        }
+        // soft bloom behind, then the eye with glow, then a faint hot core
         g.fill(Path(CGRect(x: x - R * 0.5, y: y - R * 0.5, width: R, height: R)),
                with: .radialGradient(Gradient(colors: [rgba(rgb, 0.28 * a), rgba(rgb, 0)]),
                                      center: CGPoint(x: x, y: y), startRadius: 0, endRadius: R * 0.42))

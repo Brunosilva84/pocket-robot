@@ -3,6 +3,8 @@ import SwiftUI
 struct ContentView: View {
     let app: AppModel
 
+    @Environment(\.isLuminanceReduced) private var isLuminanceReduced
+
     @State private var touchStart: Date?
     @State private var startPoint: CGPoint = .zero
     @State private var travelled: CGFloat = 0
@@ -23,11 +25,11 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .bottom) {
-                VisorView(model: app.visor)
+                VisorView(model: app.visor, lowPower: reduced)
                     .ignoresSafeArea()
                 Text(cancelArmed ? "Release to cancel" : app.caption)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(cancelArmed ? .orange : .white.opacity(0.85))
+                    .foregroundStyle(cancelArmed ? .orange : .white.opacity(reduced ? 0.4 : 0.85))
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .padding(.horizontal, 10)
@@ -46,6 +48,14 @@ struct ContentView: View {
             crownStamp = now
             app.visor.crownSpin(velocity: (new - old) / dt)
         }
+    }
+
+    /// Always On (wrist down); `-aod YES` forces the look in DEBUG builds for screenshots.
+    private var reduced: Bool {
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "aod") { return true }
+        #endif
+        return isLuminanceReduced
     }
 
     /// One gesture for tap (poke), stroke (pet + look), and hold-to-talk.
