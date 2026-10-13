@@ -5,3 +5,4 @@ watch/*.xcodeproj/
 watch/build/
 *.xcuserstate
 xcuserdata/
+.claude-backups/

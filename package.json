@@ -1,0 +1,9 @@
+{
+  "name": "pocket-robot-hub",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "hub": "node hub/hub.mjs",
+    "test": "node --test hub/test/*.test.mjs"
+  }
+}

@@ -1,0 +1,3 @@
+#!/bin/zsh
+# Runs the pocket-robot hub in the foreground. Stop with Ctrl-C.
+exec node ${0:A:h:h}/hub/hub.mjs
