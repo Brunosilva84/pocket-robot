@@ -1,0 +1,49 @@
+# XcodeGen spec — run `xcodegen generate` in this folder.
+# Signing: set your team once with `export POCKET_ROBOT_TEAM=ABCDE12345` before generating
+# (or pick it in Xcode > Signing & Capabilities). Free Apple ID teams work.
+name: PocketRobot
+options:
+  bundleIdPrefix: co.brsilva.pocketrobot
+  deploymentTarget:
+    watchOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    DEVELOPMENT_TEAM: ${POCKET_ROBOT_TEAM}
+    CODE_SIGN_STYLE: Automatic
+targets:
+  PocketRobot:
+    type: application
+    platform: watchOS
+    sources:
+      - path: PocketRobot
+        excludes:
+          - "**/*.example"
+          - "**/.claude-backups/**"
+    info:
+      path: PocketRobot/Info.plist
+      properties:
+        CFBundleDisplayName: Pocket Robot
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        WKApplication: true
+        WKWatchOnly: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+        NSMicrophoneUsageDescription: Pocket Robot listens while you hold the screen, then sends what you said to your Mac.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_NAME: Pocket Robot
+        PRODUCT_MODULE_NAME: PocketRobot
+        PRODUCT_BUNDLE_IDENTIFIER: co.brsilva.pocketrobot.watchkitapp
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "4"
+        SKIP_INSTALL: NO
+        ENABLE_PREVIEWS: YES

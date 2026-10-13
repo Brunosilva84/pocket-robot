@@ -1,0 +1,7 @@
+// Copy to Config.swift (git-ignored) — `scripts/configure` writes it for you.
+enum Config {
+    /// The hub on your Mac, reachable from the watch over Wi-Fi.
+    static let hubURL = "http://192.168.0.10:8787"
+    /// Shared secret from ~/.pocket-robot/config.json.
+    static let token = "replace-me"
+}
