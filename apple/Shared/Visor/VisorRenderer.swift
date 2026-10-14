@@ -13,6 +13,20 @@ struct VisorLayout {
         let cy = size.height * 0.44
         return VisorLayout(R: R, center: CGPoint(x: size.width / 2, y: cy), floorY: cy + R * 1.22)
     }
+
+    /// Smaller and higher, leaving the lower half for the approval buttons.
+    static func watchCompact(_ size: CGSize) -> VisorLayout {
+        let R = min(size.width * 0.24, size.height * 0.18)
+        let cy = size.height * 0.3
+        return VisorLayout(R: R, center: CGPoint(x: size.width / 2, y: cy), floorY: cy + R * 1.22)
+    }
+
+    /// Robot centered in its own canvas (iPhone), with room above for hearts and Z's.
+    static func centered(_ size: CGSize) -> VisorLayout {
+        let R = min(size.width * 0.28, size.height * 0.3)
+        let cy = size.height * 0.5
+        return VisorLayout(R: R, center: CGPoint(x: size.width / 2, y: cy), floorY: cy + R * 1.22)
+    }
 }
 
 private func rgba(_ c: [Double], _ a: Double) -> Color {

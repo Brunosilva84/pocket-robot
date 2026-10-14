@@ -23,20 +23,28 @@ struct ContentView: View {
     private let cancelDistance: CGFloat = 55
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .bottom) {
-                VisorView(model: app.visor, lowPower: reduced)
-                    .ignoresSafeArea()
-                Text(cancelArmed ? "Release to cancel" : app.caption)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(cancelArmed ? .orange : .white.opacity(reduced ? 0.4 : 0.85))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .padding(.horizontal, 10)
-                    .padding(.bottom, 2)
+        ZStack(alignment: .bottom) {
+            GeometryReader { geo in
+                ZStack(alignment: .bottom) {
+                    VisorView(model: app.visor, lowPower: reduced,
+                              placement: app.approval == nil ? .watch : .watchCompact)
+                        .ignoresSafeArea()
+                    if app.approval == nil {
+                        Text(cancelArmed ? "Release to cancel" : app.caption)
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundStyle(cancelArmed ? .orange : .white.opacity(reduced ? 0.4 : 0.85))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .padding(.horizontal, 10)
+                            .padding(.bottom, 2)
+                    }
+                }
+                .contentShape(Rectangle())
+                .gesture(touch(in: geo.size))
             }
-            .contentShape(Rectangle())
-            .gesture(touch(in: geo.size))
+            if let approval = app.approval {
+                approvalPanel(approval)
+            }
         }
         .background(Color.black)
         .focusable()
@@ -48,6 +56,39 @@ struct ContentView: View {
             crownStamp = now
             app.visor.crownSpin(velocity: (new - old) / dt)
         }
+    }
+
+    /// Claude Code wants to run a gated tool: what it is, and Deny / Approve.
+    private func approvalPanel(_ approval: Approval) -> some View {
+        VStack(spacing: 6) {
+            VStack(spacing: 1) {
+                Text(approval.tool)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.orange)
+                if !approval.summary.isEmpty {
+                    Text(approval.summary)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            HStack(spacing: 6) {
+                Button(role: .destructive) { app.approve(false) } label: {
+                    Text("Deny").frame(maxWidth: .infinity)
+                }
+                .tint(.red)
+                Button { app.approve(true) } label: {
+                    Text("Approve").frame(maxWidth: .infinity)
+                }
+                .tint(.green)
+            }
+            .buttonStyle(.borderedProminent)
+            .font(.system(size: 14, weight: .semibold, design: .rounded))
+        }
+        .padding(.horizontal, 6)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(approval.tool) wants to run \(approval.summary)")
     }
 
     /// Always On (wrist down); `-aod YES` forces the look in DEBUG builds for screenshots.

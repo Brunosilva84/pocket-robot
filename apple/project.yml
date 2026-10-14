@@ -1,10 +1,14 @@
 # XcodeGen spec — run `xcodegen generate` in this folder.
 # Signing: set your team once with `export POCKET_ROBOT_TEAM=ABCDE12345` before generating
 # (or pick it in Xcode > Signing & Capabilities). Free Apple ID teams work.
+#
+# The iPhone app carries the watch app, which carries the complication (WidgetKit), so installing
+# the iPhone app (scripts/install) also installs the watch app.
 name: PocketRobot
 options:
   bundleIdPrefix: co.brsilva.pocketrobot
   deploymentTarget:
+    iOS: "26.0"
     watchOS: "26.0"
   createIntermediateGroups: true
 settings:
@@ -13,23 +17,74 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     DEVELOPMENT_TEAM: ${POCKET_ROBOT_TEAM}
     CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "2.0"
+    CURRENT_PROJECT_VERSION: "1"
+
 targets:
   PocketRobot:
     type: application
-    platform: watchOS
+    platform: iOS
     sources:
-      - path: PocketRobot
+      - path: iOS
+        excludes:
+          - "**/.claude-backups/**"
+      - path: Shared
         excludes:
           - "**/*.example"
           - "**/.claude-backups/**"
+    dependencies:
+      - target: PocketRobotWatch
     info:
-      path: PocketRobot/Info.plist
+      path: iOS/Info.plist
+      properties:
+        CFBundleDisplayName: Pocket Robot
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        UILaunchScreen: {}
+        UIUserInterfaceStyle: Dark
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSMicrophoneUsageDescription: Pocket Robot listens while you hold the talk button, then sends what you said to your Mac.
+        NSLocalNetworkUsageDescription: Pocket Robot talks to the hub running on your Mac.
+        # Plain HTTP to the Mac on the local network, and over Tailscale (its tunnel is encrypted).
+        NSAppTransportSecurity: &ats
+          NSAllowsLocalNetworking: true
+          NSExceptionDomains:
+            ts.net:
+              NSIncludesSubdomains: true
+              NSExceptionAllowsInsecureHTTPLoads: true
+    settings:
+      base:
+        PRODUCT_NAME: Pocket Robot
+        PRODUCT_MODULE_NAME: PocketRobot
+        PRODUCT_BUNDLE_IDENTIFIER: co.brsilva.pocketrobot
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
+        ENABLE_PREVIEWS: YES
+
+  PocketRobotWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: Watch
+        excludes:
+          - "**/.claude-backups/**"
+      - path: Shared
+        excludes:
+          - "**/*.example"
+          - "**/.claude-backups/**"
+    dependencies:
+      - target: PocketRobotWidget
+    info:
+      path: Watch/Info.plist
       properties:
         CFBundleDisplayName: Pocket Robot
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         WKApplication: true
-        WKWatchOnly: true
+        WKCompanionAppBundleIdentifier: co.brsilva.pocketrobot
+        # Talks to the hub on its own; the iPhone is only a relay when the hub is out of reach.
+        WKRunsIndependentlyOfCompanionApp: true
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationPortraitUpsideDown
@@ -38,18 +93,32 @@ targets:
         # self-care extended runtime session keeps the app alive while a turn is in flight
         WKBackgroundModes:
           - self-care
-        NSAppTransportSecurity:
-          NSAllowsLocalNetworking: true
+        NSAppTransportSecurity: *ats
     settings:
       base:
         PRODUCT_NAME: Pocket Robot
-        PRODUCT_MODULE_NAME: PocketRobot
+        PRODUCT_MODULE_NAME: PocketRobotWatch
         PRODUCT_BUNDLE_IDENTIFIER: co.brsilva.pocketrobot.watchkitapp
-        MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "4"
-        SKIP_INSTALL: NO
+        SKIP_INSTALL: YES
+        ENABLE_PREVIEWS: YES
+
+  PocketRobotWidget:
+    type: app-extension
+    platform: watchOS
+    sources:
+      - path: WatchWidget
+        excludes:
+          - "Info.plist"
+          - "**/.claude-backups/**"
+    settings:
+      base:
+        INFOPLIST_FILE: WatchWidget/Info.plist
+        PRODUCT_NAME: PocketRobotWidget
+        PRODUCT_BUNDLE_IDENTIFIER: co.brsilva.pocketrobot.watchkitapp.widget
+        TARGETED_DEVICE_FAMILY: "4"
+        SKIP_INSTALL: YES
         ENABLE_PREVIEWS: YES
 
 schemes:
@@ -57,6 +126,12 @@ schemes:
     build:
       targets:
         PocketRobot: all
+    run:
+      config: Debug
+  PocketRobotWatch:
+    build:
+      targets:
+        PocketRobotWatch: all
     run:
       config: Debug
       # Attaching the debugger over Wi-Fi is slow enough that watchOS kills the app at launch.

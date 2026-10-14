@@ -1,16 +1,19 @@
 #!/bin/zsh
-# Builds the watch app for a real Apple Watch and installs it.
-# Usage: POCKET_ROBOT_TEAM=<your team id> scripts/install-watch
-# Keep the watch unlocked, on its charger or wrist, and on the same Wi-Fi as this Mac.
+# Builds the iPhone app (it carries the watch app and its complication) and installs it on your iPhone.
+# The watch app follows automatically to the paired Apple Watch (Watch app on the iPhone > My Watch, if
+# "Automatic App Install" is off).
+# Usage: POCKET_ROBOT_TEAM=<your team id> scripts/install
+# Connect the iPhone with a cable (or same Wi-Fi with wireless debugging), unlocked, Developer Mode on.
 set -e
 ROOT=${0:A:h:h}
 : ${POCKET_ROBOT_TEAM:?Set POCKET_ROBOT_TEAM to your Apple Developer team id}
-cd $ROOT/watch
+[[ -f $ROOT/apple/Shared/Config.swift ]] || { echo "Run scripts/configure first."; exit 1; }
+cd $ROOT/apple
 xcodegen generate -q
 xcodebuild -project PocketRobot.xcodeproj -scheme PocketRobot -configuration Debug \
-  -destination 'generic/platform=watchOS' -derivedDataPath build -allowProvisioningUpdates \
+  -destination 'generic/platform=iOS' -derivedDataPath build -allowProvisioningUpdates \
   DEVELOPMENT_TEAM=$POCKET_ROBOT_TEAM build | grep -E "error:|BUILD (SUCCEEDED|FAILED)"
-WATCH=$(xcrun devicectl list devices 2>/dev/null | awk '/Apple Watch/ && /available/ {for (i=1;i<=NF;i++) if ($i ~ /^[0-9A-F-]{36}$/) {print $i; exit}}')
-if [[ -z $WATCH ]]; then echo "No Apple Watch available. Unlock it and keep it on the same Wi-Fi."; exit 1; fi
-xcrun devicectl device install app --device $WATCH "build/Build/Products/Debug-watchos/Pocket Robot.app"
-echo "Installed. Open Pocket Robot on the watch."
+PHONE=$(xcrun devicectl list devices 2>/dev/null | awk '/iPhone/ && !/unavailable/ && (/available/ || /connected/) {for (i=1;i<=NF;i++) if ($i ~ /^[0-9A-F-]{36}$/) {print $i; exit}}')
+if [[ -z $PHONE ]]; then echo "No iPhone available. Connect it, unlock it, and trust this Mac."; exit 1; fi
+xcrun devicectl device install app --device $PHONE "build/Build/Products/Debug-iphoneos/Pocket Robot.app"
+echo "Installed. Open Pocket Robot on the iPhone; the watch app installs on the paired watch."

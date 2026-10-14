@@ -1,18 +1,10 @@
 import Foundation
 
-/// One line of the hub's NDJSON stream.
-struct HubEvent: Decodable, Sendable, Equatable {
-    var heard: String?
-    var state: String?
-    var tool: String?
-    var text: String?
-    var message: String?
-}
-
 enum HubError: Error, Equatable {
     case badURL
     case unauthorized
     case busy
+    case notFound
     case http(Int)
     case unreachable
 }
@@ -23,13 +15,19 @@ enum HealthResult: Sendable, Equatable {
     case unreachable
 }
 
+/// What a turn sends: a recording (m4a) or a typed prompt.
+enum TalkBody: Sendable {
+    case audio(Data)
+    case text(String)
+}
+
 struct HubClient: Sendable {
     let baseURL: URL?
     let token: String
 
-    init(baseURL: String = Config.hubURL, token: String = Config.token) {
-        self.baseURL = URL(string: baseURL)
-        self.token = token
+    init(_ settings: HubSettings = .current) {
+        self.baseURL = URL(string: settings.url)
+        self.token = settings.token
     }
 
     private static let session: URLSession = {
@@ -62,12 +60,18 @@ struct HubClient: Sendable {
         }
     }
 
-    /// Sends the recording and calls `onEvent` for every NDJSON line until the stream ends.
-    func talk(audio: URL, onEvent: @MainActor @Sendable (HubEvent) -> Void) async throws {
+    /// Sends the recording or text and calls `onEvent` for every NDJSON line until the stream ends.
+    func talk(_ body: TalkBody, onEvent: @MainActor @Sendable (HubEvent) -> Void) async throws {
         var req = try request("talk")
         req.httpMethod = "POST"
-        req.setValue("audio/mp4", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try Data(contentsOf: audio)
+        switch body {
+        case .audio(let data):
+            req.setValue("audio/mp4", forHTTPHeaderField: "Content-Type")
+            req.httpBody = data
+        case .text(let text):
+            req.setValue("text/plain; charset=utf-8", forHTTPHeaderField: "Content-Type")
+            req.httpBody = Data(text.utf8)
+        }
 
         let bytes: URLSession.AsyncBytes, response: URLResponse
         do {
@@ -75,12 +79,7 @@ struct HubClient: Sendable {
         } catch {
             throw HubError.unreachable
         }
-        switch (response as? HTTPURLResponse)?.statusCode ?? 0 {
-        case 200: break
-        case 401, 403: throw HubError.unauthorized
-        case 409: throw HubError.busy
-        case let code: throw HubError.http(code)
-        }
+        try Self.check(response)
         let decoder = JSONDecoder()
         do {
             for try await line in bytes.lines {
@@ -92,6 +91,53 @@ struct HubClient: Sendable {
             throw CancellationError()
         } catch {
             throw HubError.unreachable
+        }
+    }
+
+    /// Answers a pending approval. `HubError.notFound` when it was already decided or timed out.
+    func approve(id: String, allow: Bool) async throws {
+        var req = try request("approve")
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["id": id, "allow": allow])
+        try await send(req)
+    }
+
+    /// Finished turns, newest last.
+    func history() async throws -> [HistoryTurn] {
+        struct Body: Decodable { var turns: [HistoryTurn] }
+        let data = try await send(try request("history"))
+        return try JSONDecoder().decode(Body.self, from: data).turns
+    }
+
+    /// Forgets the Claude session; the next turn starts a new conversation.
+    func newConversation() async throws {
+        var req = try request("new")
+        req.httpMethod = "POST"
+        try await send(req)
+    }
+
+    @discardableResult
+    private func send(_ req: URLRequest) async throws -> Data {
+        var req = req
+        req.timeoutInterval = 10
+        let data: Data, response: URLResponse
+        do {
+            (data, response) = try await Self.session.data(for: req)
+        } catch {
+            throw HubError.unreachable
+        }
+        try Self.check(response)
+        return data
+    }
+
+    private static func check(_ response: URLResponse) throws {
+        switch (response as? HTTPURLResponse)?.statusCode ?? 0 {
+        case 200: return
+        case 401, 403: throw HubError.unauthorized
+        case 404: throw HubError.notFound
+        case 409: throw HubError.busy
+        case let code: throw HubError.http(code)
         }
     }
 }
