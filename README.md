@@ -87,4 +87,7 @@ Details in [docs/specs/2026-10-14-pocket-robot-v2.md](docs/specs/2026-10-14-pock
 
 ## License
 
-MIT
+- **Code:** MIT.
+- **The Visor character** (its design, look, expressions, animations and name, the files that draw it, the app icons and the screenshots): © 2026 Bruno Silva, all rights reserved. You can build and run Pocket Robot for yourself, but you can't use the character anywhere else. Forks must replace it before being distributed.
+
+See [LICENSE](LICENSE) for the full terms.

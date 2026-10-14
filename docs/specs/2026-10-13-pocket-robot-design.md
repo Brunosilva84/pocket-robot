@@ -68,4 +68,4 @@ Out of scope for v1 (done in v2, see 2026-10-14-pocket-robot-v2.md): approving c
 
 ## Repo
 
-`github.com/<user>/pocket-robot`, MIT license. `Config.swift`, `~/.pocket-robot/` and build output are never committed.
+`github.com/<user>/pocket-robot`. Code MIT; the Visor character is all rights reserved (see LICENSE). `Config.swift`, `~/.pocket-robot/` and build output are never committed.

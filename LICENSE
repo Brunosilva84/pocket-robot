@@ -1,4 +1,24 @@
-MIT License
+Pocket Robot is licensed in two parts.
+
+1. The Visor character: all rights reserved
+
+The Visor robot character is the property of Bruno Silva. This covers its design, look,
+expressions, animations and name, and the files that draw or show it:
+
+  - apple/Shared/Visor/
+  - apple/WatchWidget/RobotFace.swift
+  - the app icons (apple/*/Assets.xcassets/AppIcon.appiconset/)
+  - the images in docs/screens/
+
+Copyright (c) 2026 Bruno Silva. All rights reserved.
+
+You may view these files and build and run this project for your own personal,
+non-commercial use. You may not copy, modify, redistribute or use the character, or any
+likeness of it, in other apps, products, games, videos, marketing or any other place,
+without written permission from Bruno Silva. Forks must replace the character before
+being distributed.
+
+2. Everything else: MIT License
 
 Copyright (c) 2026 Bruno Silva
 
