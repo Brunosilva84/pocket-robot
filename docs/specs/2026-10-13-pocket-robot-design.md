@@ -8,7 +8,7 @@ Talk to Claude Code on your Mac from your Apple Watch. A robot (Visor) lives on 
 - Hold the screen, speak, release: the Mac transcribes, runs Claude Code in a workspace folder, streams its state back, and the watch shows it and speaks a one-sentence reply.
 - Watch and Mac on the same Wi-Fi.
 
-Out of scope for v1: approving commands from the watch, multiple agents, iPhone app, widgets, use away from home (Tailscale), custom voices.
+Out of scope for v1 (done in v2, see 2026-10-14-pocket-robot-v2.md): approving commands from the watch, iPhone app, widgets, use away from home (Tailscale). Still out: multiple agents, custom voices.
 
 ## Parts
 
