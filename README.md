@@ -57,7 +57,7 @@ POCKET_ROBOT_TEAM=<your team id> scripts/install
 
 The watch app follows to the paired watch (Watch app on the iPhone → My Watch, if automatic install is off). Or open `apple/PocketRobot.xcodeproj` after `cd apple && xcodegen generate` and Run.
 
-The first transcription downloads the speech model (~250 MB) to `~/.pocket-robot/models`.
+The first transcription downloads the speech model (~250 MB) to `~/.pocket-robot/models`. Set `"language": "pt"` (or your language code) in `~/.pocket-robot/config.json` so Whisper doesn't guess the language.
 
 If your devices can't resolve the Mac's `.local` name, use its IP: `POCKET_ROBOT_HOST=192.168.x.y scripts/configure`, or change the address in the iPhone app's Settings (no rebuild needed).
 

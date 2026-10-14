@@ -36,6 +36,8 @@ const config = JSON.parse(readFileSync(CONFIG, 'utf8'));
 const PORT = Number(process.env.POCKET_ROBOT_PORT ?? config.port ?? 8787);
 const WORKSPACE = config.workspace ?? join(homedir(), 'pocket-robot-workspace');
 const MODEL = config.model ?? 'small';
+// Spoken language code ("pt", "en", …); unset lets Whisper guess, which can pick the wrong one.
+const LANGUAGE = config.language;
 // Read and edit files in the workspace without asking; everything else (Bash, …) waits for an approval.
 const TOOLS = config.allowedTools ?? 'Read,Write,Edit,Glob,Grep,WebSearch,WebFetch';
 
@@ -81,8 +83,10 @@ const readJSONBody = async req => { try { return JSON.parse(await readBody(req, 
 
 function transcribe(file) {
   return new Promise(resolve => {
-    execFile('whisperkit-cli', ['transcribe', '--audio-path', file, '--model', MODEL,
-      '--download-model-path', MODELS, '--download-tokenizer-path', MODELS],
+    const args = ['transcribe', '--audio-path', file, '--model', MODEL,
+      '--download-model-path', MODELS, '--download-tokenizer-path', MODELS];
+    if (LANGUAGE) args.push('--language', LANGUAGE);
+    execFile('whisperkit-cli', args,
       { timeout: 120_000 }, (err, stdout) => {
         if (err) { log('transcribe failed:', err.message); return resolve(''); }
         // the transcript is the last non-empty line
